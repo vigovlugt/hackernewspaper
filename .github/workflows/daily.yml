@@ -1,0 +1,48 @@
+name: Generate Hacker Newspaper
+
+on:
+  # GitHub Actions cron schedules are evaluated in UTC.
+  schedule:
+    - cron: "5 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Playwright Chromium
+        run: go run github.com/mxschmitt/playwright-go/cmd/playwright@v0.6201.1 install --with-deps chromium
+
+      - name: Generate newspaper
+        run: |
+          date="$(date -u -d 'yesterday' '+%Y-%m-%d')"
+          echo "NEWSPAPER_DATE=$date" >> "$GITHUB_ENV"
+          go run . --date "$date"
+
+      - name: Publish newspaper release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="newspaper-$NEWSPAPER_DATE"
+          pdf="hackernewspaper-$NEWSPAPER_DATE.pdf"
+
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$pdf" --clobber
+          else
+            gh release create "$tag" "$pdf" \
+              --title "Hacker Newspaper — $NEWSPAPER_DATE" \
+              --notes "Hacker News front page archive for $NEWSPAPER_DATE (UTC)." \
+              --target "$GITHUB_SHA"
+          fi
