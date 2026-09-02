@@ -2,8 +2,8 @@ name: Generate Hacker Newspaper
 
 on:
   # GitHub Actions cron schedules are evaluated in UTC.
-  schedule:
-    - cron: "5 0 * * *"
+  # schedule:
+  #   - cron: "5 0 * * *"
   workflow_dispatch:
 
 permissions:
